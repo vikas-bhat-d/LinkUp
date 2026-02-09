@@ -14,6 +14,12 @@ app.use(morgan('dev'));
 
 app.use('/api/health', healthRouter);
 
+import authRouter from "./auth/auth.route";
+import userRouter from "./users/user.route";
+
+app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
+
 app.use(notFound);
 
 app.use(errorHandler);
