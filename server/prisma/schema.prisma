@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String       @id @default(uuid())
+  email      String       @unique
+  name       String?
+  avatarUrl  String?
+  provider   AuthProvider
+  providerId String?
+
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime?
+
+  messages     Message[]
+  participants ConversationParticipant[]
+}
+
+model Conversation {
+  id   String           @id @default(uuid())
+  type ConversationType
+
+  createdAt DateTime @default(now())
+
+  messages     Message[]
+  participants ConversationParticipant[]
+}
+
+model Message {
+  id             String @id @default(uuid())
+  conversationId String
+  senderId       String
+
+  content       String?
+  mediaUrl      String?
+  mediaMimeType String?
+  mediaSize     Int?
+
+  type MessageType @default(TEXT)
+
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+
+  joinedAt DateTime @default(now())
+
+  lastReadMessageId String?
+  lastReadAt        DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+}
+
+enum AuthProvider {
+  GOOGLE
+  LOCAL
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
