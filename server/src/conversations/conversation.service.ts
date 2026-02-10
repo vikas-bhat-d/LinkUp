@@ -80,3 +80,42 @@ export async function listConversations(userId: string) {
     }
   });
 }
+
+
+export async function listConversationsWithUnread(userId: string) {
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      participants: { some: { userId } }
+    },
+    orderBy: { lastMessageAt: "desc" },
+    include: {
+      participants: true,
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1
+      }
+    }
+  });
+
+  const result = [];
+
+  for (const convo of conversations) {
+    const me = convo.participants.find(p => p.userId === userId);
+
+    const unreadCount = await prisma.message.count({
+      where: {
+        conversationId: convo.id,
+        ...(me?.lastReadAt && {
+          createdAt: { gt: me.lastReadAt }
+        })
+      }
+    });
+
+    result.push({
+      ...convo,
+      unreadCount
+    });
+  }
+
+  return result;
+}

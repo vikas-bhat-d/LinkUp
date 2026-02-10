@@ -5,6 +5,8 @@ const onlineUsers = new Map<string, Set<string>>();
 export function registerPresence(io: Server, socket: Socket) {
   const userId = socket.data.userId as string;
 
+  socket.join(`user:${userId}`); //FMI:used for notification purpose
+
   if (!onlineUsers.has(userId)) {
     onlineUsers.set(userId, new Set());
   }
@@ -24,8 +26,4 @@ export function registerPresence(io: Server, socket: Socket) {
       io.emit("user:offline", { userId });
     }
   });
-}
-
-export function isUserOnline(userId: string) {
-  return onlineUsers.has(userId);
 }

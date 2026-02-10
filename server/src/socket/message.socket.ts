@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { createMessage } from "../messages/message.service";
+import { prisma } from "../config/prisma";
 
 export function registerMessageHandlers(io: Server, socket: Socket) {
   socket.on(
@@ -27,11 +28,39 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
           message
         );
 
+        const participants = await prisma.conversationParticipant.findMany({
+          where: {
+            conversationId: payload.conversationId,
+            NOT: { userId: senderId }
+          },
+          include: {
+            user: {
+              select: { id: true, name: true, avatarUrl: true }
+            }
+          }
+        });
+
+        for (const participant of participants) {
+          io.to(`user:${participant.userId}`).emit("message:notify", {
+            conversationId: payload.conversationId,
+            from: {
+              id: senderId
+            },
+            preview:
+              payload.type === "TEXT"
+                ? payload.content
+                : payload.type === "IMAGE"
+                ? "Photo"
+                : "File",
+            createdAt: message.createdAt
+          });
+        }
+
         callback?.({ success: true, message });
       } catch (err: any) {
         callback?.({
           success: false,
-          error: err.message || "Message failed",
+          error: err.message || "Message failed"
         });
       }
     }

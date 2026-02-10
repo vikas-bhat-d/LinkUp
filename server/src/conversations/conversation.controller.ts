@@ -19,16 +19,15 @@ export async function createDirectConversation(
   }
 }
 
-
 export async function getMyConversations(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const conversations = await conversationService.listConversations(
-      req.userId!
-    );
+    const conversations =
+      await conversationService.listConversationsWithUnread(req.userId!);
+
     res.json(conversations);
   } catch (err) {
     next(err);
