@@ -27,3 +27,7 @@ export function registerPresence(io: Server, socket: Socket) {
     }
   });
 }
+
+export function isUserOnline(userId: string): boolean {
+  return onlineUsers.has(userId);
+}

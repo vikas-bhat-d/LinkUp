@@ -49,3 +49,22 @@ export async function updateProfile(
     next(err);
   }
 }
+
+export async function searchUsers(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const query = req.query.q;
+
+    if (!query || typeof query !== "string") {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const users = await userService.searchUsers(query, req.userId!);
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+}

@@ -2,6 +2,8 @@ import { Server, Socket } from "socket.io";
 import { createMessage } from "../messages/message.service";
 import { prisma } from "../config/prisma";
 
+import { isUserOnline } from "./presence.socket";
+
 export function registerMessageHandlers(io: Server, socket: Socket) {
   socket.on(
     "message:send",
@@ -11,7 +13,7 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
         content?: string;
         type: "TEXT" | "IMAGE" | "FILE";
       },
-      callback
+      callback,
     ) => {
       try {
         const senderId = socket.data.userId as string;
@@ -25,44 +27,50 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 
         io.to(`conversation:${payload.conversationId}`).emit(
           "message:receive",
-          message
+          message,
         );
 
         const participants = await prisma.conversationParticipant.findMany({
           where: {
             conversationId: payload.conversationId,
-            NOT: { userId: senderId }
+            NOT: { userId: senderId },
           },
           include: {
             user: {
-              select: { id: true, name: true, avatarUrl: true }
-            }
-          }
+              select: { id: true, name: true, avatarUrl: true },
+            },
+          },
         });
 
         for (const participant of participants) {
           io.to(`user:${participant.userId}`).emit("message:notify", {
             conversationId: payload.conversationId,
-            from: {
-              id: senderId
-            },
+            from: { id: senderId },
             preview:
               payload.type === "TEXT"
                 ? payload.content
                 : payload.type === "IMAGE"
                 ? "Photo"
                 : "File",
-            createdAt: message.createdAt
+            createdAt: message.createdAt,
           });
+
+          if (isUserOnline(participant.userId)) {
+            io.to(`user:${senderId}`).emit("message:delivered", {
+              conversationId: payload.conversationId,
+              messageId: message.id,
+              userId: participant.userId,
+            });
+          }
         }
 
         callback?.({ success: true, message });
       } catch (err: any) {
         callback?.({
           success: false,
-          error: err.message || "Message failed"
+          error: err.message || "Message failed",
         });
       }
-    }
+    },
   );
 }

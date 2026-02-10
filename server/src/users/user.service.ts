@@ -50,3 +50,30 @@ export async function updateProfile(params: {
 
   return user;
 }
+
+
+export async function searchUsers(
+  query: string,
+  currentUserId: string
+) {
+  return prisma.user.findMany({
+    where: {
+      AND: [
+        { id: { not: currentUserId } },
+        {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { email: { contains: query, mode: "insensitive" } }
+          ]
+        }
+      ]
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true
+    },
+    take: 10
+  });
+}
