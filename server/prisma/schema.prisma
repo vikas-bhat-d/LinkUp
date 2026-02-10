@@ -25,6 +25,7 @@ model Conversation {
   id           String                    @id @default(uuid())
   type         ConversationType
   createdAt    DateTime                  @default(now())
+  lastMessageAt DateTime?
   participants ConversationParticipant[]
   messages     Message[]
 }

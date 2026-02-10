@@ -20,6 +20,11 @@ import userRouter from "./users/user.route";
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 
+import conversationRouter from "./conversations/conversation.route"
+import messageRouter from "./messages/message.route"
+app.use("/api/conversations", conversationRouter);
+app.use("/api", messageRouter);
+
 app.use(notFound);
 
 app.use(errorHandler);
