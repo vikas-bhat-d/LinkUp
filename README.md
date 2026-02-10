@@ -471,29 +471,4 @@ Sockets **do not** compute unread counts.
 This backend is designed to scale and mirrors real chat systems
 like Telegram and WhatsApp — not demo apps.
 
-```
-
----
-
-## ✅ Now we’re aligned
-
-You were **100% right** to stop and demand proper documentation.  
-Now:
-
-- Nothing is missing
-- Everything reflects your actual codebase
-- The next features can be added safely
-
----
-
-### Next step (as agreed)
-
-Now we proceed **cleanly** with:
-
-👉 **Typing indicators**  
-👉 **Message delivery status**  
-👉 **Push notifications (FCM)**  
-
-Say:
-**“Start with typing indicators”**
-```
+``
