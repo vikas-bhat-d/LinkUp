@@ -121,3 +121,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .sheet-content {
+    transition:
+      transform 250ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 200ms ease;
+  }
+
+  .sheet-content[data-state="closed"] {
+    opacity: 0;
+  }
+
+  .sheet-content[data-state="open"] {
+    opacity: 1;
+  }
+}
