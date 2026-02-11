@@ -2,13 +2,9 @@ import { api } from "./axios";
 import { handleApiError } from "./error";
 import { User } from "@/types/user";
 
-export async function getMe(token: string) {
+export async function getMe() {
   try {
-    const res = await api.get<User>("/api/users/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const res = await api.get<User>("/api/users/me");
     return res.data;
   } catch (err) {
     handleApiError(err);
