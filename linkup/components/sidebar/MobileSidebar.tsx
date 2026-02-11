@@ -1,5 +1,6 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { ConversationList } from "./ConversationList";
 
 export function MobileSidebar() {
   return (
@@ -10,10 +11,8 @@ export function MobileSidebar() {
         </Button>
       </SheetTrigger>
 
-      <SheetContent side="left" className="w-80 p-4 sheet-content">
-            <SheetHeader>
-      <SheetDescription>This action cannot be undone.</SheetDescription>
-    </SheetHeader>
+      <SheetContent side="left" className="w-80 p-0">
+        <ConversationList/>
       </SheetContent>
     </Sheet>
   );

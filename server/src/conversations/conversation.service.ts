@@ -89,7 +89,13 @@ export async function listConversationsWithUnread(userId: string) {
     },
     orderBy: { lastMessageAt: "desc" },
     include: {
-      participants: true,
+      participants: {
+        include: {
+          user: {
+            select: { id: true, name: true, avatarUrl: true }
+          }
+        }
+      },
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1
