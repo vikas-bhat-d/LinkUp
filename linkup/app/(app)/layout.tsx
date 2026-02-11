@@ -9,9 +9,11 @@ import { getConversations } from "@/lib/api";
 import { useConversationStore } from "@/store/conversation.store";
 import { ConversationList } from "@/components/sidebar/ConversationList";
 
+import { getSocket } from "@/lib/socket";
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated, isAuthLoading } = useAuthStore();
+  const { isAuthenticated, isAuthLoading, token } = useAuthStore();
 
   const { setConversations, setLoading } = useConversationStore();
 
@@ -30,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       try {
         setLoading(true);
         const data = await getConversations();
-        console.log("conversations data: ",data)
+        console.log("conversations data: ", data);
         setConversations(data);
       } finally {
         setLoading(false);
@@ -41,6 +43,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       fetchConversations();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    const socket = getSocket();
+
+    if (!socket.connected) {
+      socket.auth = { token };
+      socket.connect();
+    }
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isAuthenticated, token]);
 
   if (isAuthLoading) {
     return (
