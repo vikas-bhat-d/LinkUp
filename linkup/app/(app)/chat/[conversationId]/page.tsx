@@ -1,23 +1,25 @@
 "use client";
-import { useEffect, useRef } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { MobileSidebar } from "@/components/sidebar/MobileSidebar";
 import { Separator } from "@/components/ui/separator";
-import { getMessages } from "@/lib/api";
-import { useConversationStore } from "@/store/conversation.store";
-import { useMessageStore } from "@/store/message.store";
-
-import { useAuthStore } from "@/store/auth.store";
-
-import { getSocket } from "@/lib/socket";
-
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+import { getMessages } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
+
+import { useAuthStore } from "@/store/auth.store";
+import { useConversationStore } from "@/store/conversation.store";
+import { useMessageStore } from "@/store/message.store";
+import { useTypingStore } from "@/store/typing.store";
+import { Message, MessageStatus } from "@/types/message";
 
 export default function ChatPage() {
   const params = useParams();
   const conversationId = params?.conversationId as string;
+
   const { user } = useAuthStore();
   const setActiveConversation = useConversationStore(
     (s) => s.setActiveConversation,
@@ -32,14 +34,29 @@ export default function ChatPage() {
     setLoading,
   } = useMessageStore();
 
-  const [content, setContent] = useState("");
+  const { setTyping } = useTypingStore();
+  const typing = useTypingStore((s) => s.typingByConversation[conversationId]);
 
   const messages = messagesByConversation[conversationId] || [];
   const hasMore = hasMoreByConversation[conversationId];
 
+  const [content, setContent] = useState("");
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadingOlderRef = useRef(false);
   const shouldAutoScrollRef = useRef(true);
+  const lastReadRef = useRef<string | null>(null);
+
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
+
+  const conversations = useConversationStore((s) => s.conversations);
+
+  const conversation = conversations.find((c) => c.id === conversationId);
+
+  const otherParticipant = conversation?.participants.find(
+    (p) => p.userId !== user?.id,
+  );
 
   function handleScroll() {
     const container = scrollRef.current;
@@ -65,7 +82,7 @@ export default function ChatPage() {
     if (!container) return;
 
     container.scrollTop = container.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, typing]);
 
   useEffect(() => {
     if (conversationId) {
@@ -77,39 +94,12 @@ export default function ChatPage() {
     if (!conversationId) return;
 
     const socket = getSocket();
-
     socket.emit("conversation:join", conversationId);
 
     return () => {
       socket.emit("conversation:leave", conversationId);
     };
   }, [conversationId]);
-
-  useEffect(() => {
-    const socket = getSocket();
-
-    function handleReceive(message: any) {
-      useMessageStore.setState((state) => {
-        const current =
-          state.messagesByConversation[message.conversationId] || [];
-
-        if (current.some((m) => m.id === message.id)) return state;
-
-        return {
-          messagesByConversation: {
-            ...state.messagesByConversation,
-            [message.conversationId]: [...current, message],
-          },
-        };
-      });
-    }
-
-    socket.on("message:receive", handleReceive);
-
-    return () => {
-      socket.off("message:receive", handleReceive);
-    };
-  }, [messagesByConversation]);
 
   useEffect(() => {
     async function loadInitial() {
@@ -121,12 +111,31 @@ export default function ChatPage() {
           limit: 20,
         });
 
-        setMessages(conversationId, data);
+        const lastReadTime = otherParticipant?.lastReadAt
+          ? new Date(otherParticipant.lastReadAt).getTime()
+          : 0;
+
+        const enriched: Message[] = data.map((msg) => {
+          if (msg.senderId !== user?.id) return msg;
+
+          const messageTime = new Date(msg.createdAt).getTime();
+
+          const status: MessageStatus =
+            lastReadTime && messageTime <= lastReadTime ? "SEEN" : "DELIVERED";
+
+          return {
+            ...msg,
+            status,
+          };
+        });
+
+        setMessages(conversationId, enriched);
         setHasMore(conversationId, data.length === 20);
 
         requestAnimationFrame(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          const container = scrollRef.current;
+          if (container) {
+            container.scrollTop = container.scrollHeight;
           }
         });
       } finally {
@@ -137,7 +146,7 @@ export default function ChatPage() {
     if (conversationId) {
       loadInitial();
     }
-  }, [conversationId, setMessages, setHasMore, setLoading]);
+  }, [conversationId, otherParticipant?.lastReadAt]);
 
   async function loadOlder() {
     if (loadingOlderRef.current) return;
@@ -158,7 +167,7 @@ export default function ChatPage() {
         cursor: oldest.id,
       });
 
-      if (older.length === 0) {
+      if (!older.length) {
         setHasMore(conversationId, false);
         return;
       }
@@ -177,6 +186,107 @@ export default function ChatPage() {
     }
   }
 
+  useEffect(() => {
+    const socket = getSocket();
+
+    function handleReceive(message: any) {
+      useMessageStore.setState((state) => {
+        const current =
+          state.messagesByConversation[message.conversationId] || [];
+
+        if (current.some((m) => m.id === message.id)) return state;
+
+        return {
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [message.conversationId]: [...current, message],
+          },
+        };
+      });
+    }
+
+    function handleDelivered(payload: any) {
+      if (payload.conversationId !== conversationId) return;
+
+      useMessageStore
+        .getState()
+        .markDelivered(payload.conversationId, payload.messageId);
+    }
+
+    function handleSeen(payload: any) {
+      if (payload.conversationId !== conversationId) return;
+
+      useMessageStore
+        .getState()
+        .markSeen(payload.conversationId, payload.messageId);
+    }
+
+    function handleTypingStarted(payload: any) {
+      if (payload.conversationId !== conversationId) return;
+
+      setTyping(conversationId, true);
+    }
+
+    function handleTypingStopped(payload: any) {
+      if (payload.conversationId !== conversationId) return;
+
+      setTyping(conversationId, false);
+    }
+
+    socket.on("message:receive", handleReceive);
+    socket.on("message:delivered", handleDelivered);
+    socket.on("message:seen", handleSeen);
+    socket.on("typing:started", handleTypingStarted);
+    socket.on("typing:stopped", handleTypingStopped);
+
+    return () => {
+      socket.off("message:receive", handleReceive);
+      socket.off("message:delivered", handleDelivered);
+      socket.off("message:seen", handleSeen);
+      socket.off("typing:started", handleTypingStarted);
+      socket.off("typing:stopped", handleTypingStopped);
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    const socket = getSocket();
+
+    if (!messages.length) return;
+    if (!shouldAutoScrollRef.current) return;
+
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage) return;
+    if (lastMessage.senderId === user?.id) return;
+
+    if (lastReadRef.current === lastMessage.id) return;
+
+    lastReadRef.current = lastMessage.id;
+
+    socket.emit("message:read", {
+      conversationId,
+      messageId: lastMessage.id,
+    });
+  }, [messages.length]);
+
+  function handleTyping() {
+    const socket = getSocket();
+
+    if (!isTypingRef.current) {
+      socket.emit("typing:start", { conversationId });
+      isTypingRef.current = true;
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("typing:stop", { conversationId });
+      isTypingRef.current = false;
+    }, 1500);
+  }
+
   function sendMessage() {
     if (!content.trim()) return;
 
@@ -187,8 +297,17 @@ export default function ChatPage() {
       content,
       type: "TEXT",
     });
-    
-    shouldAutoScrollRef.current=true
+
+    if (isTypingRef.current) {
+      socket.emit("typing:stop", { conversationId });
+      isTypingRef.current = false;
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    shouldAutoScrollRef.current = true;
     setContent("");
   }
 
@@ -217,22 +336,46 @@ export default function ChatPage() {
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`
-                  max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words
-                  ${isMe ? "bg-primary text-primary-foreground" : "bg-muted"}
-                `}
+                className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${
+                  isMe ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}
               >
-                {msg.content}
+                <div className="flex items-end gap-2">
+                  <span>{msg.content}</span>
+
+                  {isMe && (
+                    <span className="text-[10px] opacity-70">
+                      {msg.status === "SEEN" ? (
+                        <span className="text-blue-400">✓✓</span>
+                      ) : msg.status === "DELIVERED" ? (
+                        "✓✓"
+                      ) : (
+                        "✓"
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
+
+        {typing && (
+          <div className="flex justify-start">
+            <div className="max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm bg-muted italic">
+              Typing...
+            </div>
+          </div>
+        )}
       </div>
 
       <footer className="border-t p-4 flex gap-2">
         <Input
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value);
+            handleTyping();
+          }}
           placeholder="Type a message..."
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -240,7 +383,6 @@ export default function ChatPage() {
             }
           }}
         />
-
         <Button onClick={sendMessage}>Send</Button>
       </footer>
     </div>

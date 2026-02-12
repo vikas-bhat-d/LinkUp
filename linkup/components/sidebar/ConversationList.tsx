@@ -40,7 +40,6 @@ export function ConversationList() {
       <div className="space-y-1 p-2">
         {conversations.map((convo) => {
           const isActive = convo.id === activeConversationId;
-          console.log("convoid: ",convo.id, isActive)
 
           const otherParticipant = convo.participants.find(
             (p) => p.userId !== user?.id

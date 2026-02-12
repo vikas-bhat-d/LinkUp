@@ -10,6 +10,9 @@ interface MessageState {
   prependMessages: (conversationId: string, messages: Message[]) => void;
   setHasMore: (conversationId: string, value: boolean) => void;
   setLoading: (loading: boolean) => void;
+  markDelivered: (conversationId: string, messageId: string) => void;
+  markSeen: (conversationId: string, messageId: string) => void;
+
 }
 
 export const useMessageStore = create<MessageState>((set) => ({
@@ -45,4 +48,33 @@ export const useMessageStore = create<MessageState>((set) => ({
     })),
 
   setLoading: (loading) => set({ isLoading: loading }),
+
+  markDelivered: (conversationId, messageId) =>
+  set((state) => ({
+    messagesByConversation: {
+      ...state.messagesByConversation,
+      [conversationId]:
+        state.messagesByConversation[conversationId]?.map(
+          (m) =>
+            m.id === messageId && m.status !== "SEEN"
+              ? { ...m, status: "DELIVERED" }
+              : m
+        ) || [],
+    },
+  })),
+
+markSeen: (conversationId, messageId) =>
+  set((state) => ({
+    messagesByConversation: {
+      ...state.messagesByConversation,
+      [conversationId]:
+        state.messagesByConversation[conversationId]?.map(
+          (m) =>
+            m.id === messageId
+              ? { ...m, status: "SEEN" }
+              : m
+        ) || [],
+    },
+  })),
+
 }));
