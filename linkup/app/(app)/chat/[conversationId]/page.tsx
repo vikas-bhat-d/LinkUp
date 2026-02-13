@@ -175,7 +175,27 @@ export default function ChatPage() {
       const existingIds = new Set(messages.map((m) => m.id));
       const filtered = older.filter((m) => !existingIds.has(m.id));
 
-      prependMessages(conversationId, filtered);
+      const lastReadTime = otherParticipant?.lastReadAt
+        ? new Date(otherParticipant.lastReadAt).getTime()
+        : 0;
+
+      const enriched:Message[] = filtered.map((msg) => {
+        if (msg.senderId !== user?.id) {
+          return msg;
+        }
+
+        const messageTime = new Date(msg.createdAt).getTime();
+
+        const status =
+          lastReadTime && messageTime <= lastReadTime ? "SEEN" : "DELIVERED";
+
+        return {
+          ...msg,
+          status,
+        };
+      });
+
+      prependMessages(conversationId, enriched);
 
       requestAnimationFrame(() => {
         const newHeight = container.scrollHeight;
@@ -336,7 +356,7 @@ export default function ChatPage() {
               className={`flex ${isMe ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm break-words ${
+                className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm wrap-break-words ${
                   isMe ? "bg-primary text-primary-foreground" : "bg-muted"
                 }`}
               >
