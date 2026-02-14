@@ -15,6 +15,7 @@ import { useConversationStore } from "@/store/conversation.store";
 import { useMessageStore } from "@/store/message.store";
 import { useTypingStore } from "@/store/typing.store";
 import { Message, MessageStatus } from "@/types/message";
+import { MessageBubble } from "@/components/chat/MessageBubble";
 
 export default function ChatPage() {
   const params = useParams();
@@ -62,7 +63,7 @@ export default function ChatPage() {
     const container = scrollRef.current;
     if (!container) return;
 
-    const threshold = 80;
+    const threshold = 30;
 
     const isNearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight <
@@ -70,7 +71,7 @@ export default function ChatPage() {
 
     shouldAutoScrollRef.current = isNearBottom;
 
-    if (container.scrollTop <= 150) {
+    if (container.scrollTop <= 300) {
       loadOlder();
     }
   }
@@ -417,32 +418,11 @@ export default function ChatPage() {
           const isMe = msg.senderId === user?.id;
 
           return (
-            <div
+            <MessageBubble
               key={msg.id}
-              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[75%] lg:max-w-[60%] rounded-2xl px-4 py-2 text-sm wrap-break-words ${
-                  isMe ? "bg-primary text-primary-foreground" : "bg-muted"
-                }`}
-              >
-                <div className="flex items-end gap-2">
-                  <span>{msg.content}</span>
-
-                  {isMe && (
-                    <span className="text-[10px] opacity-70">
-                      {msg.status === "SEEN" ? (
-                        <span className="text-blue-400">✓✓</span>
-                      ) : msg.status === "DELIVERED" ? (
-                        "✓✓"
-                      ) : (
-                        "✓"
-                      )}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+              message={msg}
+              isMe={isMe}
+            />
           );
         })}
 
