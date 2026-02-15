@@ -71,7 +71,7 @@ export default function ChatPage() {
 
     shouldAutoScrollRef.current = isNearBottom;
 
-    if (container.scrollTop <= 300) {
+    if (container.scrollTop <= 150) {
       loadOlder();
     }
   }
