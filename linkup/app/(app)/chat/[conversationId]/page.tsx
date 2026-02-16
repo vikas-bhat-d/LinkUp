@@ -148,65 +148,7 @@ export default function ChatPage() {
       loadInitial();
     }
   }, [conversationId, otherParticipant?.lastReadAt]);
-
-  // async function loadOlder() {
-  //   if (loadingOlderRef.current) return;
-  //   if (!hasMore || !messages.length) return;
-
-  //   loadingOlderRef.current = true;
-
-  //   try {
-  //     const oldest = messages[0];
-  //     const container = scrollRef.current;
-  //     if (!container) return;
-
-  //     const previousHeight = container.scrollHeight;
-
-  //     const older = await getMessages({
-  //       conversationId,
-  //       limit: 20,
-  //       cursor: oldest.id,
-  //     });
-
-  //     if (!older.length) {
-  //       setHasMore(conversationId, false);
-  //       return;
-  //     }
-
-  //     const existingIds = new Set(messages.map((m) => m.id));
-  //     const filtered = older.filter((m) => !existingIds.has(m.id));
-
-  //     const lastReadTime = otherParticipant?.lastReadAt
-  //       ? new Date(otherParticipant.lastReadAt).getTime()
-  //       : 0;
-
-  //     const enriched:Message[] = filtered.map((msg) => {
-  //       if (msg.senderId !== user?.id) {
-  //         return msg;
-  //       }
-
-  //       const messageTime = new Date(msg.createdAt).getTime();
-
-  //       const status =
-  //         lastReadTime && messageTime <= lastReadTime ? "SEEN" : "DELIVERED";
-
-  //       return {
-  //         ...msg,
-  //         status,
-  //       };
-  //     });
-
-  //     prependMessages(conversationId, enriched);
-
-  //     requestAnimationFrame(() => {
-  //       const newHeight = container.scrollHeight;
-  //       container.scrollTop += newHeight - previousHeight;
-  //     });
-  //   } finally {
-  //     loadingOlderRef.current = false;
-  //   }
-  // }
-
+  
   async function loadOlder() {
   if (loadingOlderRef.current) return;
   if (!hasMore || !messages.length) return;

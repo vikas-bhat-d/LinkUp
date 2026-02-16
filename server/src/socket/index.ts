@@ -15,7 +15,7 @@ export function initSocket(server: any) {
   });
 
   io.use(socketAuthMiddleware);
-  console.log("waiting to connect")
+  console.log("socket is ready to get connected.")
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
