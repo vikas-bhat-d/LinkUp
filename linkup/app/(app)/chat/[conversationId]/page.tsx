@@ -16,6 +16,7 @@ import { useMessageStore } from "@/store/message.store";
 import { useTypingStore } from "@/store/typing.store";
 import { Message, MessageStatus } from "@/types/message";
 import { MessageBubble } from "@/components/chat/MessageBubble";
+import { ChatHeader } from "@/components/chat/ChatHeader";
 
 export default function ChatPage() {
   const params = useParams();
@@ -341,13 +342,8 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="h-14 border-b flex items-center gap-2 px-4">
-        <div className="md:hidden">
-          <MobileSidebar />
-        </div>
-        <span className="font-medium">Chat</span>
-      </header>
+    <div className="flex h-[90%] md:h-full flex-col">
+     <ChatHeader conversationId={conversationId} />
 
       <Separator />
 
